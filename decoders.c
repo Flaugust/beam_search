@@ -129,12 +129,6 @@ float *ctc_beam_search_decoder(FILE           *fp,
 	int idx_set_next[BEAM_SIZE * (PROBS_LEN + 1)] = {0};
 	int idx_set_prev[BEAM_SIZE] = {0};
 
-/*	unsigned char *prefix_set_prev[BEAM_SIZE];
-	for (i = 0; i < BEAM_SIZE; i++) {
-		prefix_set_prev[i] = (unsigned char *)malloc(PREFIX_CHAR_LENGTH * sizeof(char));
-		memset(prefix_set_prev[i], 0, BEAM_SIZE * sizeof(char));
-	}*/
-
 	unsigned char *prefix_set_next[BEAM_SIZE * (PROBS_LEN + 1)];
 	for (i = 0; i < BEAM_SIZE * (PROBS_LEN + 1); i++) {
 		prefix_set_next[i] = (unsigned char *)malloc(PREFIX_CHAR_LENGTH * sizeof(char));
@@ -280,9 +274,6 @@ float *ctc_beam_search_decoder(FILE           *fp,
 		}
 	}
 	free(l);
-/*	for (i = 0; i < BEAM_SIZE; i++) {
-		free(prefix_set_prev[i]);
-	}*/
 	for (i = 0; i < BEAM_SIZE * PROBS_LEN; i++) {
 		free(prefix_set_next[i]);
 	}
