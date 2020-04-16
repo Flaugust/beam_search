@@ -4,12 +4,20 @@
 #include "config.h"
 
 typedef struct {
-	int grams_len_per[N_GRAMS];
-	unsigned char *data_buffer;
-	int data_size;
-}LM_DATA;
+	unsigned char prefix_set_next[PREFIX_CHAR_LENGTH];
+	float probs_set_next;
+	float probs_b_cur;
+	float probs_nb_cur;
+}CANDIDATES;
 
-extern float *ctc_beam_search_decoder(FILE *fp, unsigned char **prefix_set_prev, float *probs_seq, int probs_len, int T, int blank_id, float prune);
+typedef struct {
+	unsigned char prefix_set_prev[PREFIX_CHAR_LENGTH];
+	float beam_result;
+}PREFIX_LIST;
+
+
+extern void print_hex(const char* str);
+extern PREFIX_LIST *ctc_beam_search_decoder(float *probs_seq, int probs_len, int T, int blank_id, float prune);
 
 #endif
 

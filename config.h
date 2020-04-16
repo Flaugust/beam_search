@@ -8,7 +8,7 @@
 #define PREFIX_CHAR_LENGTH 50
 #define N_GRAMS            4
 #define UNK                65
-#define S                  67
+#define START_CHAR         67
 
 typedef struct {
 	unsigned char prefix_set_next;

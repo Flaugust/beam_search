@@ -20,30 +20,6 @@ static inline float fastlogf (float x)
     return 0.69314718f * fastlogf2 (x);
 }
 
-static int candidatas_same_merged(unsigned char **string, float *probs_nb, float *probs_b, int len, float *probs)
-{
-	int i = 0;
-	int j = 0;
-	for (i = 0; i < len - 1; i++) {
-		for (j = i + 1; j < len;) {
-			if (0 == strcmp(string[i], string[j])) {
-				probs_b[i] += probs_b[j];
-				probs_nb[i] += probs_nb[j];
-				for (int k = j; k < len - 1; k++) {
-					strcpy(string[k], string[k + 1]);
-					probs_b[k] = probs_b[k + 1];
-					probs_nb[k] = probs_nb[k + 1];
-				}
-				len--;
-			} else {
-				j++;
-			}
-			probs[i] = probs_b[i] + probs_nb[i];
-		}
-	}
-	return len;
-}
-
 static int sequence_new(float *new_probs, unsigned char *new_index, float *probs, char *probs_idx, int probs_len, float prune)
 {
 	int i = 0;
@@ -58,31 +34,60 @@ static int sequence_new(float *new_probs, unsigned char *new_index, float *probs
 	return cutoff_len;
 }
 
-static void candidatas_sorted(float *probs, unsigned char **string, float *probs_b, float *probs_nb, int len)
+static int candidatas_same_merged(CANDIDATES candidates[], int len)
+{
+	int i = 0;
+	int j = 0;
+	for (i = 0; i < len - 1; i++) {
+		for (j = i + 1; j < len;) {
+			if (0 == strcmp(candidates[i].prefix_set_next, candidates[j].prefix_set_next)) {
+				candidates[i].probs_b_cur += candidates[j].probs_b_cur;
+				candidates[i].probs_nb_cur += candidates[j].probs_nb_cur;
+				for (int k = j; k < len - 1; k++) {
+					strcpy(candidates[k].prefix_set_next, candidates[k + 1].prefix_set_next);
+					candidates[k].probs_b_cur = candidates[k + 1].probs_b_cur;
+					candidates[k].probs_nb_cur = candidates[k + 1].probs_nb_cur;
+				}
+				len--;
+			} else {
+				j++;
+			}
+			candidates[i].probs_set_next = candidates[i].probs_b_cur + candidates[i].probs_nb_cur;
+		}
+	}
+	return len;
+}
+
+static int candidatas_sorted(CANDIDATES candidates[], int len)
 {
 	float tmp_prob = 0.f;
     char *tmp_char;
+	tmp_char = (char *)malloc(len);                  VALIDATE_PTR(tmp_char);
 	int tmp_idx = 0;
 	float tmp_probs_b = 0.f;
 	float tmp_probs_nb = 0.f;
 	for (int i = 0; i < len - 1; i++) {
 	    for (int j = 1 + i; j < len; j++) {
-	        if (probs[i] < probs[j]) {
-	            tmp_prob = probs[i];
-	            probs[i] = probs[j];
-	            probs[j] = tmp_prob;
-	            tmp_char = string[i];
-	            string[i] = string[j];
-	            string[j] = tmp_char;
-				tmp_probs_b = probs_b[i];
-				probs_b[i] = probs_b[j];
-				probs_b[j] = tmp_probs_b;
-				tmp_probs_nb = probs_nb[i];
-				probs_nb[i] = probs_nb[j];
-				probs_nb[j] = tmp_probs_nb;
+	        if (candidates[i].probs_set_next < candidates[j].probs_set_next) {
+	            tmp_prob = candidates[i].probs_set_next;
+	            candidates[i].probs_set_next = candidates[j].probs_set_next;
+	            candidates[j].probs_set_next = tmp_prob;          
+				strcpy(tmp_char, candidates[i].prefix_set_next);
+				strcpy(candidates[i].prefix_set_next, candidates[j].prefix_set_next);
+				strcpy(candidates[j].prefix_set_next, tmp_char);
+/*				tmp_char = candidates[i].prefix_set_next;
+	            candidates[i].prefix_set_next = candidates[j].prefix_set_next;
+	            candidates[j].prefix_set_next[j] = tmp_char;*/
+				tmp_probs_b = candidates[i].probs_b_cur;
+				candidates[i].probs_b_cur = candidates[j].probs_b_cur;
+				candidates[j].probs_b_cur = tmp_probs_b;
+				tmp_probs_nb = candidates[i].probs_nb_cur;
+				candidates[i].probs_nb_cur = candidates[j].probs_nb_cur;
+				candidates[j].probs_nb_cur = tmp_probs_nb;
 	        }
 	    }
 	}
+	free(tmp_char);
 }
 
 static void sorted(float *probs, unsigned char *probs_idx, int probs_len)
@@ -103,78 +108,67 @@ static void sorted(float *probs, unsigned char *probs_idx, int probs_len)
 	}
 }
 
-float *ctc_beam_search_decoder(FILE           *fp,
-							   unsigned char  **prefix_set_prev,
-                               float          *probs_seq,
-							   int            probs_len,
-							   int            T,
-							   int            blank_id,
-							   float          prune)
+void print_hex(const char* str)
 {
-    int i = 0;
-    int j = 0;
-    int index = 0;
+    unsigned char ch;
+    while(ch=*str++)
+    {
+        printf("%02x",ch);
+    }
+    printf("\n");
+}
+
+PREFIX_LIST prefix_list[BEAM_SIZE];
+PREFIX_LIST *ctc_beam_search_decoder(//PREFIX_LIST   prefix_list[],
+                               		float          *probs_seq,
+							   		int            probs_len,
+							  		int            T,
+							   		int            blank_id,
+							   		float          prune)
+{
+    int i, j, index;
 	int prefix_len = 0;
 	float score = 0.0;
-	unsigned char lable[N_GRAMS];
+	float probs_nb_prev[BEAM_SIZE] = {0.0};
+	float probs_b_prev[BEAM_SIZE] = {0.0};
+	float probs_set_prev[BEAM_SIZE] = {0.0};
 
-	float probs_set_next[BEAM_SIZE * (PROBS_LEN + 1)];
-	for(i = 0; i < BEAM_SIZE * (PROBS_LEN + 1); i++) {
-		probs_set_next[i] = 1.0;
-	}
-	float probs_set_prev[BEAM_SIZE] = {0.f};
+	CANDIDATES candidates[BEAM_SIZE * (PROBS_LEN + 1)];
 
-	int idx_set_next[BEAM_SIZE * (PROBS_LEN + 1)] = {0};
-	int idx_set_prev[BEAM_SIZE] = {0};
-
-	unsigned char *prefix_set_next[BEAM_SIZE * (PROBS_LEN + 1)];
-	for (i = 0; i < BEAM_SIZE * (PROBS_LEN + 1); i++) {
-		prefix_set_next[i] = (unsigned char *)malloc(PREFIX_CHAR_LENGTH * sizeof(char));
-	}
-
-	float probs_b_prev[BEAM_SIZE * (PROBS_LEN + 1)];
-	for(i = 0; i < BEAM_SIZE * (PROBS_LEN + 1); i++) {
+	for(i = 0; i < BEAM_SIZE; i++) {
 		probs_b_prev[i] = 1.0;
 	};
-	float probs_nb_prev[BEAM_SIZE * (PROBS_LEN + 1)] = {0.0};
 
-	unsigned char *l;
-	l = (unsigned char *)malloc(PREFIX_CHAR_LENGTH * sizeof(char));
-
-    unsigned char start_character = UNK + 2;
-
-    LM_DATA lm_data;
-	fseek(fp, 4, SEEK_SET);
-    int num = N_GRAMS;
-	int len[N_GRAMS];
-    lm_data.data_size = 0;
-    for (i = 0; i < N_GRAMS; i++) {
-        fread(&lm_data.grams_len_per[i], 4, 1, fp);
-    	lm_data.data_size += lm_data.grams_len_per[i] * ((i + 1) + 2 * sizeof(float));
+	FILE *fp;
+    if ((fp = fopen("/home/fengli/workspace/beam_search/beam_search/beam_index/lib/beam_search/to_fengli/2020_04_14/lm.bin", "r")) == NULL) {
+//    if ((fp = fopen("/home/fengli/workspace/beam_search/beam_search/beam_index/lib/beam_search/lm1.bin", "r")) == NULL) {
+        printf("Cannot read file\n");
+        return NULL;
     }
-    lm_data.data_buffer = (unsigned char *)malloc(lm_data.data_size);
-    fread(lm_data.data_buffer, sizeof(char), lm_data.data_size, fp);
-    for (int t = 0; t < T; t++) {
 
-		float probs_b_cur[PROBS_LEN * (BEAM_SIZE + 1)];
-		memset(probs_b_cur, 0.0, BEAM_SIZE * (PROBS_LEN + 1) * sizeof(float));
-		float probs_nb_cur[PROBS_LEN*BEAM_SIZE + PROBS_LEN];
-		memset(probs_nb_cur, 0.0, BEAM_SIZE * (PROBS_LEN + 1) * sizeof(float));
+	//read bin file
+    LM_DATA lm_data;
+	ReadLmData(fp, &lm_data);
+
+    for (int t = 0; t < T; t++) {
         int cutoff_len = 0;
 		unsigned char probs_idx[PROBS_LEN];
 		for (i = 1; i < PROBS_LEN + 1; i++) {
 			probs_idx[i - 1] = i;
 		}
-		float probs_seq_cutoff[PROBS_LEN] = {0.f};
+		float probs_seq_cutoff[PROBS_LEN] = {0.0};
 		unsigned char probs_idx_cutoff[PROBS_LEN] = {0};
-
-		for (i = 0; i < BEAM_SIZE * (PROBS_LEN + 1); i++) {
-			memset(prefix_set_next[i], 0, PREFIX_CHAR_LENGTH * sizeof(char));
-		}
 
 		sorted(probs_seq + t * probs_len, probs_idx, probs_len);
 
 		cutoff_len = sequence_new(probs_seq_cutoff, probs_idx_cutoff, probs_seq + t * probs_len, probs_idx, probs_len, prune);
+
+		for (i = 0; i < BEAM_SIZE * (PROBS_LEN + 1); i++) {
+			memset(candidates[i].prefix_set_next, 0, PREFIX_CHAR_LENGTH);
+			candidates[i].probs_b_cur = 0.0;
+			candidates[i].probs_nb_cur = 0.0;
+			candidates[i].probs_set_next = 0.0;
+		}
 
 		if (t == 0)
 			prefix_len = 1;
@@ -184,58 +178,52 @@ float *ctc_beam_search_decoder(FILE           *fp,
 		int cnt = 0;
         for (i = 0; i < prefix_len; i++) {
 
-			memset(l, 0, PREFIX_CHAR_LENGTH * sizeof(char));
-			strcpy(l, prefix_set_prev[i]);
-			int l_len = strlen(l);
+			int l_len = strlen(prefix_list[i].prefix_set_prev);
 
             for (index = 0; index < cutoff_len; index++) {
 
-				unsigned char c_idx[2];
-                c_idx[0] = probs_idx_cutoff[index];
-				c_idx[1] = 0;
+				unsigned char c_idx;
+				c_idx = probs_idx_cutoff[index];
                 float prob_c = probs_seq_cutoff[index];
-                if (c_idx[0] == blank_id) {
-					probs_b_cur[i * cutoff_len + index + cnt] = prob_c * (probs_b_prev[i] +
-							probs_nb_prev[i]);
-					strcpy(prefix_set_next[i * cutoff_len + index + cnt], l);
+				if (c_idx == blank_id) {
+					candidates[i * cutoff_len + index + cnt].probs_b_cur = prob_c * (probs_b_prev[i] + probs_nb_prev[i]);
+					strncpy(candidates[i * cutoff_len + index + cnt].prefix_set_next, prefix_list[i].prefix_set_prev, l_len);
                 } else {
-                    unsigned char l_plus[S_LEN];
+                    unsigned char l_plus[PREFIX_CHAR_LENGTH];
                     memset(l_plus, '\0', sizeof(l_plus));
+					
+					strncpy(l_plus, prefix_list[i].prefix_set_prev, l_len);
+					l_plus[l_len] = c_idx;
 
-					strcpy(l_plus, l);
-					strcat(l_plus, c_idx);
-
-					int lp_len = strlen(l_plus);
-					unsigned char last_char[2];
+					int lp_len = l_len + 1;
+					unsigned char last_char;
 					if (l_len > 0) {
-						last_char[0] = l[l_len - 1];
+						last_char = prefix_list[i].prefix_set_prev[l_len - 1];
 					} else {
-						last_char[0] = l[0];
+						last_char = prefix_list[i].prefix_set_prev[0];
 					}
-					last_char[1] = 0;
 
-					if (0 == strcmp(c_idx, last_char)) {
-
+					if (c_idx == last_char) {
 						if (probs_b_prev[i] != 0 && probs_nb_prev[i] != 0) {
-							strcpy(prefix_set_next[i * cutoff_len + index + cnt], l_plus);
-							probs_nb_cur[i * cutoff_len + index + cnt] = prob_c * probs_b_prev[i];
+							strncpy(candidates[i * cutoff_len + index + cnt].prefix_set_next, l_plus, lp_len);
+							candidates[i * cutoff_len + index + cnt].probs_nb_cur = prob_c * probs_b_prev[i];
 							cnt++;
-							strcpy(prefix_set_next[i * cutoff_len + index + cnt], l);
-							probs_nb_cur[i * cutoff_len + index + cnt] = prob_c * probs_nb_prev[i];
+							strncpy(candidates[i * cutoff_len + index + cnt].prefix_set_next, prefix_list[i].prefix_set_prev, l_len);
+							candidates[i * cutoff_len + index + cnt].probs_nb_cur = prob_c * probs_nb_prev[i];
 						} else if (probs_nb_prev[i] != 0 && probs_b_prev[i] == 0) {
-							strcpy(prefix_set_next[i * cutoff_len + index + cnt], l);
-							probs_nb_cur[i * cutoff_len + index + cnt] = prob_c * probs_nb_prev[i];
+							strncpy(candidates[i * cutoff_len + index + cnt].prefix_set_next, prefix_list[i].prefix_set_prev, l_len);
+							candidates[i * cutoff_len + index + cnt].probs_nb_cur = prob_c * probs_nb_prev[i];
 						} else if (probs_nb_prev[i] == 0 && probs_b_prev[i] != 0) {
-							strcpy(prefix_set_next[i * cutoff_len + index + cnt], l_plus);
-							probs_nb_cur[i * cutoff_len + index + cnt] = prob_c * probs_b_prev[i];
+							strncpy(candidates[i * cutoff_len + index + cnt].prefix_set_next, l_plus, lp_len);
+							candidates[i * cutoff_len + index + cnt].probs_nb_cur = prob_c * probs_b_prev[i];
 						}
 					} else {
-                        strcpy(prefix_set_next[i * cutoff_len + index + cnt], l_plus);
-
+                        strncpy(candidates[i * cutoff_len + index + cnt].prefix_set_next, l_plus, lp_len);
+						unsigned char lable[N_GRAMS];
 						memset(lable, 0, N_GRAMS * sizeof(char));
 						if (lp_len > 0) {
 							if (lp_len < N_GRAMS) {
-								lable[0] = start_character;
+								lable[0] = START_CHAR;
 								memcpy(lable + 1, l_plus, lp_len);
 								score = ext_scoring_func(lm_data, (lp_len + 1), lable, UNK) * lp_len;
 							} else {
@@ -245,7 +233,7 @@ float *ctc_beam_search_decoder(FILE           *fp,
 						} else {
 							score = 1.0;
 						}
-						probs_nb_cur[i * cutoff_len + index + cnt] = score * prob_c * (probs_b_prev[i] + probs_nb_prev[i]);
+						candidates[i * cutoff_len + index + cnt].probs_nb_cur = score * prob_c * (probs_b_prev[i] + probs_nb_prev[i]);
                     }
                 }
             }
@@ -256,38 +244,30 @@ float *ctc_beam_search_decoder(FILE           *fp,
 		/*遍历重复字符串，将重复字符串进行合并，合并位置选择最小索引值处，后面字符串依次前移，
 		并根据上一次是否为blank修改probs_nb_prev（将重复字符串对应索引值非blank结尾的概率相加）
 		及probs_b_prev（重复字符串对应索引值blank结尾的概率值相加）的值。*/
-		memset(probs_set_next, 0.0, len*sizeof(float));
-		int new_len = candidatas_same_merged(prefix_set_next, probs_nb_cur, probs_b_cur, len, probs_set_next);
 
-		candidatas_sorted(probs_set_next, prefix_set_next, probs_b_cur, probs_nb_cur, len);
+		int new_len = candidatas_same_merged(candidates, len);
+
+		candidatas_sorted(candidates, new_len);
 
 		//根据概率大小进行排序，前缀字符串，索引值等跟随概率排序进行变换位置
 
-		memset(probs_nb_prev, 0, BEAM_SIZE);
-		memset(probs_b_prev, 0, BEAM_SIZE);
-
 		for (i = 0; i < BEAM_SIZE; i++) {
-			strcpy(prefix_set_prev[i], prefix_set_next[i]);
-			probs_nb_prev[i] = probs_nb_cur[i];
-			probs_b_prev[i] = probs_b_cur[i];
-			probs_set_prev[i] = probs_set_next[i];
-			idx_set_prev[i] = idx_set_next[i];
+			strcpy(prefix_list[i].prefix_set_prev, candidates[i].prefix_set_next);
+			probs_nb_prev[i] = candidates[i].probs_nb_cur;
+			probs_b_prev[i] = candidates[i].probs_b_cur;
+			probs_set_prev[i] = candidates[i].probs_set_next;
 		}
     }
-	static float beam_result[BEAM_SIZE] = {0.f};
 
 	for (i = 0; i < BEAM_SIZE; i++) {
-		if (probs_set_prev[i] > 0.0 && strlen(prefix_set_prev[i]) >= 1) {
-			beam_result[i] = fastlogf(probs_set_prev[i]);
+		if (probs_set_prev[i] > 0.0 && strlen(prefix_list[i].prefix_set_prev) >= 1) {
+			prefix_list[i].beam_result = fastlogf(probs_set_prev[i]);
 		} else {
-			beam_result[i] = -INFINITY;
+			prefix_list[i].beam_result = -INFINITY;
 		}
 	}
 
-	free(l);
-	for (i = 0; i < BEAM_SIZE * PROBS_LEN; i++) {
-		free(prefix_set_next[i]);
-	}
 	free(lm_data.data_buffer);
-    return beam_result;
+	fclose(fp);
+    return prefix_list;
 }
