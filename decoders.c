@@ -252,7 +252,6 @@ float *ctc_beam_search_decoder(FILE           *fp,
         }
 		int len = prefix_len * cutoff_len + cnt;
 
-
 		/*遍历重复字符串，将重复字符串进行合并，合并位置选择最小索引值处，后面字符串依次前移，
 		并根据上一次是否为blank修改probs_nb_prev（将重复字符串对应索引值非blank结尾的概率相加）
 		及probs_b_prev（重复字符串对应索引值blank结尾的概率值相加）的值。*/
@@ -283,7 +282,6 @@ float *ctc_beam_search_decoder(FILE           *fp,
 			beam_result[i] = -INFINITY;
 		}
 	}
-
 	free(l);
 	for (i = 0; i < BEAM_SIZE * PROBS_LEN; i++) {
 		free(prefix_set_next[i]);

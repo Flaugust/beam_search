@@ -25,6 +25,8 @@ void print_hex(const char* str)
     printf("\n");
 }
 /*
+=======
+>>>>>>> 50e0e15ba2af3546c0b48e6bfcfd4ad64bcac5ad
 int main(int argc, char *argv[])
 {
     FILE *fp;
@@ -43,6 +45,7 @@ int main(int argc, char *argv[])
     }
 
 	int i = 0;
+<<<<<<< HEAD
 //	float score[BEAM_SIZE] = {0.0};
 	float *score;
 

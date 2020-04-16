@@ -66,7 +66,6 @@ static int match_lable(LM_DATA lm_data, int n_grams, const unsigned char *lable,
         } else {
             return NO_FOUND;
         }
-
     } else if (flag == 0 && state == BACK_PROB) {
         return NO_FOUND;
     }
