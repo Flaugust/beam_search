@@ -9,7 +9,7 @@ typedef struct {
 	int data_size;
 }LM_DATA;
 
-extern int ReadLmData(FILE *fp, LM_DATA *lm_data);
-extern float ext_scoring_func(LM_DATA lm_data, int n_grams, const unsigned char *lable, unsigned char unk);
+extern int ReadLmData(FILE *fp, LM_DATA *lm_data, float *unk_prob);
+extern float ext_scoring_func(LM_DATA lm_data, int n_grams, const unsigned char *lable, float unk_prob);
 
 #endif

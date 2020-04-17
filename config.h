@@ -2,7 +2,7 @@
 #define __CONFIG_H__
 
 #define VALIDATE_PTR(ptr) if(NULL == ptr) { printf("%s: allocation failed\n", #ptr); return -1;}
-#define BEAM_SIZE          4
+#define BEAM_SIZE          3
 #define PROBS_LEN          65
 #define S_LEN              50
 #define PREFIX_CHAR_LENGTH 50
