@@ -71,7 +71,7 @@ static int candidatas_sorted(CANDIDATES candidates[], int len)
 	        if (candidates[i].probs_set_next < candidates[j].probs_set_next) {
 	            tmp_prob = candidates[i].probs_set_next;
 	            candidates[i].probs_set_next = candidates[j].probs_set_next;
-	            candidates[j].probs_set_next = tmp_prob;          
+	            candidates[j].probs_set_next = tmp_prob;
 				strcpy(tmp_char, candidates[i].prefix_set_next);
 				strcpy(candidates[i].prefix_set_next, candidates[j].prefix_set_next);
 				strcpy(candidates[j].prefix_set_next, tmp_char);
@@ -119,8 +119,7 @@ void print_hex(const char* str)
 }
 
 PREFIX_LIST prefix_list[BEAM_SIZE];
-PREFIX_LIST *ctc_beam_search_decoder(//PREFIX_LIST   prefix_list[],
-                               		float          *probs_seq,
+PREFIX_LIST *ctc_beam_search_decoder(float          *probs_seq,
 							   		int            probs_len,
 							  		int            T,
 							   		int            blank_id,
@@ -132,6 +131,7 @@ PREFIX_LIST *ctc_beam_search_decoder(//PREFIX_LIST   prefix_list[],
 	float probs_nb_prev[BEAM_SIZE] = {0.0};
 	float probs_b_prev[BEAM_SIZE] = {0.0};
 	float probs_set_prev[BEAM_SIZE] = {0.0};
+	unsigned char lable[N_GRAMS];
 
 	CANDIDATES candidates[BEAM_SIZE * (PROBS_LEN + 1)];
 
@@ -191,7 +191,7 @@ PREFIX_LIST *ctc_beam_search_decoder(//PREFIX_LIST   prefix_list[],
                 } else {
                     unsigned char l_plus[PREFIX_CHAR_LENGTH];
                     memset(l_plus, '\0', sizeof(l_plus));
-					
+
 					strncpy(l_plus, prefix_list[i].prefix_set_prev, l_len);
 					l_plus[l_len] = c_idx;
 
@@ -239,7 +239,6 @@ PREFIX_LIST *ctc_beam_search_decoder(//PREFIX_LIST   prefix_list[],
             }
         }
 		int len = prefix_len * cutoff_len + cnt;
-
 
 		/*遍历重复字符串，将重复字符串进行合并，合并位置选择最小索引值处，后面字符串依次前移，
 		并根据上一次是否为blank修改probs_nb_prev（将重复字符串对应索引值非blank结尾的概率相加）

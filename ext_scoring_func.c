@@ -63,10 +63,11 @@ static int match_lable(LM_DATA lm_data, int n_grams, const unsigned char *lable,
             unk_prob = info_grams.prob;
         }
         int cnt = 0;
-		if (strncmp(info_grams.str, lable, n_grams) == 0) {
-			cnt = n_grams;
-		}
-
+        for (i = 0; i < n_grams; i++) {
+            if (info_grams.str[i] == lable[i]){
+                cnt++;
+            }
+        }
         if (state == PROB) {
             if (cnt == n_grams) {
                 flag = 1;
