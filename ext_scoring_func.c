@@ -11,35 +11,27 @@
 #define BACK_PROB 1
 
 typedef struct {
-	float prob;
-	float back_prob;
-	unsigned char str[N_GRAMS];
+    float prob;
+    float back_prob;
+    unsigned char str[N_GRAMS];
 }INFO_GRAMS;
-
-static void mymemcpy(char* dst, const char* src, int num)
-{
-	    while(num--) {
-            *dst++ = *src++;
-        }
-}
 
 int ReadLmData(FILE *fp, LM_DATA *lm_data, float *unk_prob)
 {
-	fseek(fp, 4, SEEK_SET);
+    fseek(fp, 4, SEEK_SET);
     int num = N_GRAMS;
     int i = 0;
-	int len[N_GRAMS];
+    int len[N_GRAMS];
     lm_data->data_size = 0;
     for (i = 0; i < N_GRAMS; i++) {
         fread(&(lm_data->grams_len_per[i]), 4, 1, fp);
-    	lm_data->data_size += lm_data->grams_len_per[i] * 12;    //2个float,1个char(4字节补齐)，grams_len_per是n_grams中的条数
-//        lm_data->data_size += lm_data->grams_len_per[i] * (8 + (i+1));
+        lm_data->data_size += lm_data->grams_len_per[i] * 12;    //2个float,1个char(4字节补齐)，grams_len_per是n_grams中的条数
     }
     lm_data->data_buffer = (unsigned char *)malloc(lm_data->data_size);
     fread(lm_data->data_buffer, sizeof(char), lm_data->data_size, fp);
 
     *unk_prob = *(float *)(lm_data->data_buffer);
-	return 0;
+    return 0;
 }
 
 static int match_lable(LM_DATA lm_data, int n_grams, const unsigned char *lable, int state, float *prob, float unk_prob)
@@ -47,16 +39,14 @@ static int match_lable(LM_DATA lm_data, int n_grams, const unsigned char *lable,
     int n = 0, i = 0, flag = 0;
     unsigned char grams_lable[N_GRAMS];
     INFO_GRAMS info_grams;
-	char *start_addr = lm_data.data_buffer;
+    char *start_addr = lm_data.data_buffer;
 
     for (i = 0; i < n_grams - 1; i++) {
-		start_addr += lm_data.grams_len_per[i] * 12;  //2个float,1个char(4字节补齐)
-//        start_addr += lm_data.grams_len_per[i] * (8 + (i+1));
+        start_addr += lm_data.grams_len_per[i] * 12;  //2个float,1个char(4字节补齐)
     }
     while(lm_data.grams_len_per[n_grams-1]) {
-		info_grams.prob = *(float *)start_addr;
-		start_addr += sizeof(float);
-//        start_addr += n_grams;
+        info_grams.prob = *(float *)start_addr;
+        start_addr += sizeof(float);
         info_grams.back_prob = *(float *)start_addr;
         start_addr += sizeof(float);
         mymemcpy(info_grams.str, start_addr, n_grams);
@@ -73,7 +63,7 @@ static int match_lable(LM_DATA lm_data, int n_grams, const unsigned char *lable,
                 flag = 1;
                 *prob = info_grams.prob;
                 return FOUND;
-			}
+            }
         } else if (state == BACK_PROB) {
             if (cnt == n_grams) {
                 flag = 1;
@@ -97,7 +87,7 @@ static int match_lable(LM_DATA lm_data, int n_grams, const unsigned char *lable,
 
 float ext_scoring_func(LM_DATA lm_data, int n_grams, const unsigned char *lable, float unk_prob)
 {
-	float tmp_prob, tmp_back_prob;
+    float tmp_prob, tmp_back_prob;
 
     if ( n_grams == 0)
     {

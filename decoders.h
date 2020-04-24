@@ -4,15 +4,15 @@
 #include "config.h"
 
 typedef struct {
-	unsigned char prefix_set_next[PREFIX_CHAR_LENGTH];
-	float probs_set_next;
-	float probs_b_cur;
-	float probs_nb_cur;
+    unsigned char prefix_set_next[PREFIX_CHAR_LENGTH];
+    float probs_set_next;
+    float probs_b_cur;
+    float probs_nb_cur;
 }CANDIDATES;
 
 typedef struct {
-	unsigned char prefix_set_prev[PREFIX_CHAR_LENGTH];
-	float beam_result;
+    unsigned char prefix_set_prev[PREFIX_CHAR_LENGTH];
+    float beam_result;
 }PREFIX_LIST;
 
 

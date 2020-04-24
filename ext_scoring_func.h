@@ -4,9 +4,9 @@
 #include "decoders.h"
 
 typedef struct {
-	int grams_len_per[N_GRAMS];
-	unsigned char *data_buffer;
-	int data_size;
+    int grams_len_per[N_GRAMS];
+    unsigned char *data_buffer;
+    int data_size;
 }LM_DATA;
 
 extern int ReadLmData(FILE *fp, LM_DATA *lm_data, float *unk_prob);
