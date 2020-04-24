@@ -50,7 +50,7 @@ static int match_lable(LM_DATA lm_data, int n_grams, const unsigned char *lable,
         info_grams.back_prob = *(float *)start_addr;
         start_addr += sizeof(float);
 //        mymemcpy(info_grams.str, start_addr, n_grams);
-		info_grams.str = start_addr;
+        info_grams.str = start_addr;
         start_addr += 4;
 
         int cnt = 0;
