@@ -30,7 +30,7 @@ int ReadLmData(FILE *fp, LM_DATA *lm_data, float *unk_prob)
     lm_data->data_buffer = (unsigned char *)malloc(lm_data->data_size);
     fread(lm_data->data_buffer, sizeof(char), lm_data->data_size, fp);
 
-    *unk_prob = *(float *)(lm_data->data_buffer);
+    *unk_prob = *(float *)(lm_data->data_buffer + 24);
     return 0;
 }
 
@@ -49,10 +49,12 @@ static int match_lable(LM_DATA lm_data, int n_grams, const unsigned char *lable,
         start_addr += sizeof(float);
         info_grams.back_prob = *(float *)start_addr;
         start_addr += sizeof(float);
-//        mymemcpy(info_grams.str, start_addr, n_grams);
         info_grams.str = start_addr;
         start_addr += 4;
 
+		if (info_grams.str[0] == 65) {
+            unk_prob = info_grams.prob;
+        }
         int cnt = 0;
         for (i = 0; i < n_grams; i++) {
             if (info_grams.str[i] == lable[i]){

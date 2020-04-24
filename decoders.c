@@ -34,11 +34,31 @@ static int sequence_new(float *new_probs, unsigned char *new_index, float *probs
     return cutoff_len;
 }
 
+static int sequence_pruning(float *prob_seq, int prob_len, float cutoff_prob, int cutoff_top_n)
+{
+    int cutoff_len = 0;
+    float sum_probs = 0.0;
+    if (cutoff_prob < 1.0 || cutoff_top_n < prob_len) {
+        for (int i = 0; i < prob_len; i++) {
+            sum_probs += prob_seq[i];
+            cutoff_len += 1;
+            if (sum_probs >= cutoff_prob) {
+                break;
+            }
+        }
+        if (cutoff_len >= cutoff_top_n) {
+            cutoff_len = cutoff_top_n;
+        }
+    }
+
+    return cutoff_len;
+}
+
 static int candidatas_same_merged(CANDIDATES candidates[], int len)
 {
     int i = 0;
     int j = 0;
-    for (i = 0; i < len - 1; i++) {
+    for (i = 0; i < len; i++) {
         for (j = i + 1; j < len;) {
             if (0 == strcmp(candidates[i].prefix_set_next, candidates[j].prefix_set_next)) {
                 candidates[i].probs_b_cur += candidates[j].probs_b_cur;
@@ -52,8 +72,8 @@ static int candidatas_same_merged(CANDIDATES candidates[], int len)
             } else {
                 j++;
             }
-            candidates[i].probs_set_next = candidates[i].probs_b_cur + candidates[i].probs_nb_cur;
         }
+        candidates[i].probs_set_next = candidates[i].probs_b_cur + candidates[i].probs_nb_cur;
     }
     return len;
 }
@@ -120,7 +140,8 @@ PREFIX_LIST *ctc_beam_search_decoder(float          *probs_seq,
                                        int            probs_len,
                                       int            T,
                                        int            blank_id,
-                                       float          prune)
+                                       float          cutoff_prob,
+                                       int            cutoff_top_n)
 {
     int i, j, index;
     int prefix_len = 0;
@@ -137,7 +158,8 @@ PREFIX_LIST *ctc_beam_search_decoder(float          *probs_seq,
     };
 
 	FILE *fp;
-    if ((fp = fopen("/home/fengli/workspace/beam_search/beam_search/beam_index/tools/lm4bitassigned.bin", "r")) == NULL) {
+//    if ((fp = fopen("/home/fengli/workspace/beam_search/beam_search/beam_index/tools/lm1617/lm-4bit-align.bin", "r")) == NULL) {
+    if ((fp = fopen("/home/fengli/workspace/beam_search/beam_search/beam_index/tools/lm518/lm4bitassigned.bin", "r")) == NULL) {
         printf("Cannot read file\n");
         return NULL;
     }
@@ -153,12 +175,13 @@ PREFIX_LIST *ctc_beam_search_decoder(float          *probs_seq,
         for (i = 1; i < PROBS_LEN + 1; i++) {
             probs_idx[i - 1] = i;
         }
-        float probs_seq_cutoff[PROBS_LEN] = {0.0};
-        unsigned char probs_idx_cutoff[PROBS_LEN] = {0};
 
-        sorted(probs_seq + t * probs_len, probs_idx, probs_len);
+        float probs_seq_cur[PROBS_LEN] = {0.0};
+        memcpy(probs_seq_cur, probs_seq + t * probs_len, PROBS_LEN * sizeof(float));
+        
+        sorted(probs_seq_cur, probs_idx, probs_len);
 
-        cutoff_len = sequence_new(probs_seq_cutoff, probs_idx_cutoff, probs_seq + t * probs_len, probs_idx, probs_len, prune);
+        cutoff_len = sequence_pruning(probs_seq_cur, probs_len, cutoff_prob, cutoff_top_n);
 
         for (i = 0; i < BEAM_SIZE * (PROBS_LEN + 1); i++) {
             memset(candidates[i].prefix_set_next, 0, PREFIX_CHAR_LENGTH);
@@ -179,8 +202,8 @@ PREFIX_LIST *ctc_beam_search_decoder(float          *probs_seq,
             for (index = 0; index < cutoff_len; index++) {
 
                 unsigned char c_idx;
-                c_idx = probs_idx_cutoff[index];
-                float prob_c = probs_seq_cutoff[index];
+                c_idx = probs_idx[index];
+                float prob_c = probs_seq_cur[index];
                 if (c_idx == blank_id) {
                     candidates[i * cutoff_len + index + cnt].probs_b_cur = prob_c * (probs_b_prev[i] + probs_nb_prev[i]);
                     strncpy(candidates[i * cutoff_len + index + cnt].prefix_set_next, prefix_list[i].prefix_set_prev, l_len);

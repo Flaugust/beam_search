@@ -17,7 +17,7 @@ typedef struct {
 
 
 extern void print_hex(const char* str);
-extern PREFIX_LIST *ctc_beam_search_decoder(float *probs_seq, int probs_len, int T, int blank_id, float prune);
+extern PREFIX_LIST *ctc_beam_search_decoder(float *probs_seq, int probs_len, int T, int blank_id, float cutoff_prob, int cutoff_top_n);
 
 #endif
 
