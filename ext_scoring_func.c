@@ -13,7 +13,7 @@
 typedef struct {
     float prob;
     float back_prob;
-    unsigned char str[N_GRAMS];
+    unsigned char *str;
 }INFO_GRAMS;
 
 int ReadLmData(FILE *fp, LM_DATA *lm_data, float *unk_prob)
@@ -39,7 +39,7 @@ static int match_lable(LM_DATA lm_data, int n_grams, const unsigned char *lable,
     int n = 0, i = 0, flag = 0;
     unsigned char grams_lable[N_GRAMS];
     INFO_GRAMS info_grams;
-    char *start_addr = lm_data.data_buffer;
+    unsigned char *start_addr = lm_data.data_buffer;
 
     for (i = 0; i < n_grams - 1; i++) {
         start_addr += lm_data.grams_len_per[i] * 12;  //2个float,1个char(4字节补齐)
@@ -49,7 +49,8 @@ static int match_lable(LM_DATA lm_data, int n_grams, const unsigned char *lable,
         start_addr += sizeof(float);
         info_grams.back_prob = *(float *)start_addr;
         start_addr += sizeof(float);
-        mymemcpy(info_grams.str, start_addr, n_grams);
+//        mymemcpy(info_grams.str, start_addr, n_grams);
+		info_grams.str = start_addr;
         start_addr += 4;
 
         int cnt = 0;
