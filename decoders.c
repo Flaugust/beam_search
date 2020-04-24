@@ -75,9 +75,6 @@ static int candidatas_sorted(CANDIDATES candidates[], int len)
                 strcpy(tmp_char, candidates[i].prefix_set_next);
                 strcpy(candidates[i].prefix_set_next, candidates[j].prefix_set_next);
                 strcpy(candidates[j].prefix_set_next, tmp_char);
-/*                tmp_char = candidates[i].prefix_set_next;
-                candidates[i].prefix_set_next = candidates[j].prefix_set_next;
-                candidates[j].prefix_set_next[j] = tmp_char;*/
                 tmp_probs_b = candidates[i].probs_b_cur;
                 candidates[i].probs_b_cur = candidates[j].probs_b_cur;
                 candidates[j].probs_b_cur = tmp_probs_b;
@@ -139,7 +136,7 @@ PREFIX_LIST *ctc_beam_search_decoder(float          *probs_seq,
         probs_b_prev[i] = 1.0;
     };
 
-    FILE *fp;
+	FILE *fp;
     if ((fp = fopen("/home/fengli/workspace/beam_search/beam_search/beam_index/tools/lm4bitassigned.bin", "r")) == NULL) {
         printf("Cannot read file\n");
         return NULL;
@@ -148,7 +145,7 @@ PREFIX_LIST *ctc_beam_search_decoder(float          *probs_seq,
     //read bin file
     float unk_prob;
     LM_DATA lm_data;
-    ReadLmData(fp, &lm_data, &unk_prob);
+	ReadLmData(fp, &lm_data, &unk_prob);
 
     for (int t = 0; t < T; t++) {
         int cutoff_len = 0;
