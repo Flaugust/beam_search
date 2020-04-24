@@ -119,7 +119,6 @@ void print_hex(const char* str)
 }
 
 PREFIX_LIST prefix_list[BEAM_SIZE];
-
 PREFIX_LIST *ctc_beam_search_decoder(float          *probs_seq,
 							   		int            probs_len,
 							  		int            T,
@@ -141,9 +140,6 @@ PREFIX_LIST *ctc_beam_search_decoder(float          *probs_seq,
 	};
 
 	FILE *fp;
-//    if ((fp = fopen("/home/fengli/workspace/beam_search/beam_search/beam_index/lib/beam_search/to_fengli/2020_04_14/lm.bin", "r")) == NULL) {
-//    if ((fp = fopen("/home/fengli/workspace/beam_search/beam_search/beam_index/lib/beam_search/lm1.bin", "r")) == NULL) {
-//    if ((fp = fopen("/home/fengli/workspace/beam_search/beam_search/beam_index/to_fengli/noback/lm.bin", "r")) == NULL) {
     if ((fp = fopen("/home/fengli/workspace/beam_search/beam_search/beam_index/tools/lm4bitassigned.bin", "r")) == NULL) {
         printf("Cannot read file\n");
         return NULL;
